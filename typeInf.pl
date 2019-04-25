@@ -31,8 +31,48 @@ typeStatement(gvLet(Name, T, Code), unit):-
     bType(T), /* make sure we have an infered type */
     asserta(gvar(Name, T)). /* add definition to database */
 
+/* local variable definition
+    Example:
+        let v = 3 in ...
+ */
+typeStatement(lvLet(Name, T, Code), unit):-
+    atom(Name), /* make sure we have a bound name */
+    typeExp(Code, T), /* infer the type of Code and ensure it is T */
+    bType(T). /* make sure we have an infered type */
+
+/* global function definition */
+typeStatement(gfLet(Name, T, Args, Code), unit):-
+    atom(Name), /* make sure we have a func name */
+    typeExp(Args, T), /* infer types of the params hopefully */
+    typeExp(Code, T), /* infer the type of Code and ensure it is T */
+    bType(T), /* make sure we have an infered type */
+    asserta(gvar(Name, T)). /* add func to database */
+
+/* if statement type */
+typeStatement(if(Cond, CodeT, CodeF), T):-
+    typeExp(Cond, boolean), /* condition return type */
+    typeExp(CodeT, T), /* infer return type of "if true" code */
+    typeExp(CodeF, T), /* infer return type of "if false" code */
+    bType(T). /* make sure we have an infered type */
+
+/* while loop statement type */
+typeStatement(while(Cond, Code), T):-
+    typeExp(Cond, boolean), /* condition return type */
+    typeExp(Code, T), /* infer return type of code */
+    bType(T). /* make sure we have an infered type */
+
+/* while loop statement type */
+typeStatement(for(Init, Cond, Step, Code), T):-
+    typeExp(Init, T), /* initialize statement return type */
+    typeExp(Cond, boolean), /* condition return type */
+    typeExp(Step, T), /* step statement return type */
+    typeExp(Code, T), /* infer return type of code */
+    bType(T). /* make sure we have an infered type & return it */
+
+typeStatement(T, T).
+
 /* Code is simply a list of statements. The type is 
-    the type of the last statement 
+    the type of the last statement (or return type?)
 */
 typeCode([S], T):-typeStatement(S, T).
 typeCode([S, S2|Code], T):-
@@ -48,9 +88,11 @@ infer(Code, T) :-
 /* Basic types
     TODO: add more types if needed
  */
+bType(boolean).
 bType(int).
 bType(float).
 bType(string).
+bType(char).
 bType(unit). /* unit type for things that are not expressions */
 /*  functions type.
     The type is a list, the last element is the return type
@@ -73,7 +115,7 @@ bType([H|T]):- bType(H), bType(T).
         g
 
     Call the predicate deleveGVars() to delete all global 
-    variables. Best wy to do this is in your top predicate
+    variables. Best way to do this is in your top predicate
 */
 
 deleteGVars():-retractall(gvar), asserta(gvar(_X,_Y):-false()).
@@ -87,6 +129,17 @@ deleteGVars():-retractall(gvar), asserta(gvar(_X,_Y):-false()).
 
 fType(iplus, [int,int,int]).
 fType(fplus, [float, float, float]).
+
+fType(icompare, [int,int,int]).
+fType(fcompare, [float, float, int]).
+fType(scompare, [string,string,int]).
+
+ftype(idouble, [int,int]).
+ftype(fdouble, [float, float]).
+
+ftype(charAt, [string, int, char]).
+ftype(findChar, [string, char, int]).
+
 fType(fToInt, [float,int]).
 fType(iToFloat, [int,float]).
 fType(print, [_X, unit]). /* simple print */
